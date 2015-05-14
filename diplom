@@ -76,23 +76,21 @@ class SimpleEditor(ScrolledText):
         self.text.config(font=('courier', 15, 'normal'))
         self.mark_line_id = 0
         self.sum_pastit = []
-        self.text.bind("<Return>", self.callback)
+        self.text.bind("q", self.callback)
         self.text.pack()
     
     def callback(self, event):
         to_mark = self.sum_pastit[self.mark_line_id]
-        print to_mark
+        print "to_mark =", to_mark
         pattern = '([0-9]+\.0)\+'
         to_mark_id = re.findall(pattern,to_mark)[0]
-        print to_mark_id
+        print "to_mark_id =", to_mark_id
         self.text.tag_remove(SEL, '1.0', END)
-        self.text.mark_set(INSERT, to_mark)    
+        #self.text.mark_set(INSERT, to_mark)    
         self.text.tag_add(SEL, to_mark_id, to_mark)     
-        self.text.get('1.0', END)      
+        #self.text.get('1.0', END)      
         self.text.see(INSERT)
         self.mark_line_id = self.mark_line_id + 1 % len(self.sum_pastit)
-
-
 
     def onSave(self):
         filename = asksaveasfilename()
@@ -130,8 +128,8 @@ class SimpleEditor(ScrolledText):
         print "sum_search_peremen= ", sum_search_peremen
      
     def search_trig(self):
-        mark_line_id = 0
-        line_id = 0
+        self.mark_line_id = 0
+        line_id = 1
         self.data = self.data.split('\n')
         for lines in self.data:
             pattern = 'always *\@\ *\(\ *posedge .*\)|negedge .*\)'
@@ -143,7 +141,7 @@ class SimpleEditor(ScrolledText):
                 print "pastit =", pastit, type(pastit)
                 self.sum_pastit.append(pastit)
             line_id +=1
-        print self.sum_pastit
+        print "self.sum_pastit =", self.sum_pastit
 
     def onTMR(self):
         self.data = self.clear_comments()
