@@ -15,15 +15,13 @@ import ttk
 root = Tk()
 root.title("Triple Modular Redundancy")
 root.geometry("800x600")
+special_words = ['always', 'wire', 'reg','assign', 'endmodule', 'initial']
 
 class StatusBar(Frame):
     def __init__(self, parent=None):
         Frame.__init__(self, parent=None)
-        self.label = Label(self, bd=15, relief=SUNKEN, anchor=W, text="Open verilog file. Press TMR and choose 'Y'es or 'N'o.")
+        self.label = Label(self, bd=15, relief=SUNKEN, anchor=W, text="Откройте файл (.v). Нажмите TMR и выберете нужный триггер кнопкой <ВНИЗ>.")
         self.label.pack(fill=X)
-        progressbar = ttk.Progressbar(orient=HORIZONTAL, length=500, mode='determinate', variable=100, maximum=1000)
-        progressbar.pack(side="bottom")
-        progressbar.start()
 
     def set(self, format, *args):
         self.label.config(text=format % args)
@@ -73,11 +71,14 @@ class SimpleEditor(ScrolledText):
         Button(frm, text='TMR',  command=self.onTMR ).pack(side=LEFT)
         Quitter(frm).pack(side=LEFT)
         ScrolledText.__init__(self, parent, file=file)
+        self.text.tag_config("a", background="yellow", foreground="blue")
         self.text.config(font=('courier', 15, 'normal'))
         self.mark_line_id = 0
         self.sum_pastit = []
-        self.text.bind("q", self.callback)
+        self.text.bind("<Down>", self.callback)
         self.text.pack()
+        self.progressbar = ttk.Progressbar(orient=HORIZONTAL, length=500, mode='determinate', variable=100, maximum=500)
+        self.progressbar.pack(side="bottom")
     
     def callback(self, event):
         to_mark = self.sum_pastit[self.mark_line_id]
@@ -85,9 +86,9 @@ class SimpleEditor(ScrolledText):
         pattern = '([0-9]+\.0)\+'
         to_mark_id = re.findall(pattern,to_mark)[0]
         print "to_mark_id =", to_mark_id
-        self.text.tag_remove(SEL, '1.0', END)
-        #self.text.mark_set(INSERT, to_mark)    
-        self.text.tag_add(SEL, to_mark_id, to_mark)     
+        self.text.tag_remove("a", '1.0', END)
+        self.text.mark_set(INSERT, to_mark)    
+        self.text.tag_add("a", to_mark_id, to_mark)     
         #self.text.get('1.0', END)      
         self.text.see(INSERT)
         self.mark_line_id = self.mark_line_id + 1 % len(self.sum_pastit)
@@ -144,6 +145,7 @@ class SimpleEditor(ScrolledText):
         print "self.sum_pastit =", self.sum_pastit
 
     def onTMR(self):
+        self.progressbar.start()
         self.data = self.clear_comments()
         self.text.delete('1.0', END)
         for lines in self.data:  
