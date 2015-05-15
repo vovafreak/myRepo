@@ -14,7 +14,7 @@ import ttk
 
 root = Tk()
 root.title("Triple Modular Redundancy")
-root.geometry("800x600")
+root.geometry("1024x768")
 special_words = ['always', 'wire', 'reg','assign', 'endmodule', 'initial']
 
 class StatusBar(Frame):
@@ -31,21 +31,16 @@ class StatusBar(Frame):
         self.label.config(text="")
         self.label.update_idletasks()
 
-class Quitter(Frame):                        
-    def __init__(self, parent=None):          
-        Frame.__init__(self, parent)
-        self.pack()
-        widget = Button(self, text='Quit', command=self.quit)
-        widget.pack(expand=YES, fill=BOTH, side=LEFT)
-    def quit(self):
-        ans = askokcancel('Verify exit', "Really quit?")
-        if ans: Frame.quit(self)
+        #widget = Button(self, text='Quit', command=self.quit)
+        #widget.pack(expand=YES, fill=BOTH, side=LEFT)
 
 
 class ScrolledText(Frame):
     def __init__(self, parent=None, text='', file=None):
         Frame.__init__(self, parent)
-        self.pack(expand=YES, fill=BOTH, padx = 20, pady = 20)               
+        self.pack(expand=YES, fill=BOTH, padx = 15, pady = 10)
+        self.progressbar = ttk.Progressbar(orient=HORIZONTAL, length=500, mode='determinate', variable=100, maximum=500)
+        self.progressbar.pack(side="bottom")               
         self.makewidgets()
     def makewidgets(self):
         status = StatusBar(ScrolledText)
@@ -64,22 +59,26 @@ class SimpleEditor(ScrolledText):
     def __init__(self, parent=None, file=None, data = []): 
         frm = Frame(root)
         frm.pack(fill=X)
-        Button(frm, text='Save as',  command=self.onSave).pack(side=LEFT)
-        Button(frm, text='Open', command=self.onOpen).pack(side=LEFT)
-        Button(frm, text='About',  command=self.onAbout).pack(side=LEFT)
-        Button(frm, text='Search_Peremen',  command=self.onSearchP).pack(side=LEFT)
-        Button(frm, text='TMR',  command=self.onTMR ).pack(side=LEFT)
-        Quitter(frm).pack(side=LEFT)
+        Button(frm, text='Открыть', command=self.onOpen).pack(side=LEFT)
+        Button(frm, text='Сохранить как',  command=self.onSave).pack(side=LEFT)
+        Button(frm, text='Выход',  command=self.onQuit ).pack(side=LEFT)
+        Button(frm, text='Инфо',  command=self.onAbout).pack(side=LEFT)
+        Button(frm, text='Поиск регистров',  command=self.onSearchR).pack(side=RIGHT)
+        Button(frm, text='Поиск триггеров',  command=self.onSearchT ).pack(side=RIGHT)
+        Button(frm, text='Старт TMR',  command=self.onTMR ).pack(side=RIGHT)
         ScrolledText.__init__(self, parent, file=file)
         self.text.tag_config("a", background="yellow", foreground="blue")
         self.text.config(font=('courier', 15, 'normal'))
         self.mark_line_id = 0
         self.sum_pastit = []
         self.text.bind("<Down>", self.callback)
+        self.text.bind("<Up>", self.reverse_callback)
         self.text.pack()
-        self.progressbar = ttk.Progressbar(orient=HORIZONTAL, length=500, mode='determinate', variable=100, maximum=500)
-        self.progressbar.pack(side="bottom")
     
+    def onQuit(self):
+        ans = askokcancel('Выходи', "Вы действительно хотите выйти?")
+        if ans: Frame.quit(self)
+
     def callback(self, event):
         to_mark = self.sum_pastit[self.mark_line_id]
         print "to_mark =", to_mark
@@ -92,6 +91,19 @@ class SimpleEditor(ScrolledText):
         #self.text.get('1.0', END)      
         self.text.see(INSERT)
         self.mark_line_id = self.mark_line_id + 1 % len(self.sum_pastit)
+
+    def reverse_callback(self, event):
+        to_mark = self.sum_pastit[self.mark_line_id]
+        print "to_mark =", to_mark
+        pattern = '([0-9]+\.0)\+'
+        to_mark_id = re.findall(pattern,to_mark)[0]
+        print "to_mark_id =", to_mark_id
+        self.text.tag_remove("a", '1.0', END)
+        self.text.mark_set(INSERT, to_mark)    
+        self.text.tag_add("a", to_mark_id, to_mark)     
+        #self.text.get('1.0', END)      
+        self.text.see(INSERT)
+        self.mark_line_id = self.mark_line_id - 1 % len(self.sum_pastit)
 
     def onSave(self):
         filename = asksaveasfilename()
@@ -117,7 +129,7 @@ class SimpleEditor(ScrolledText):
             self.text.focus()
         return self.data
 
-    def onSearchP(self):
+    def onSearchR(self):
         sum_search_peremen = []
         for lines in self.data:
             pattern = ('(reg *)([\[\d\:\d\]]*) +([\w]+) *;')
@@ -129,7 +141,7 @@ class SimpleEditor(ScrolledText):
         print "sum_search_peremen= ", sum_search_peremen
      
     def search_trig(self):
-        self.mark_line_id = 0
+        #self.mark_line_id = 0
         line_id = 1
         self.data = self.data.split('\n')
         for lines in self.data:
@@ -144,7 +156,7 @@ class SimpleEditor(ScrolledText):
             line_id +=1
         print "self.sum_pastit =", self.sum_pastit
 
-    def onTMR(self):
+    def onSearchT(self):
         self.progressbar.start()
         self.data = self.clear_comments()
         self.text.delete('1.0', END)
@@ -162,6 +174,8 @@ class SimpleEditor(ScrolledText):
             sum_found += found + '\n'
         return sum_found
 
+    def onTMR(self):
+        print "hui"
 
     def onAbout(self):
         showinfo("Vladimir Soloviev","               This is TMR editor.\nTMR is a fault- tolerant form of N-modular redundancy, in which three systems perform a process \
