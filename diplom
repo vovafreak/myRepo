@@ -15,12 +15,12 @@ import ttk
 root = Tk()
 root.title("Triple Modular Redundancy")
 root.geometry("1024x768")
-special_words = ['always', 'wire', 'reg','assign', 'endmodule', 'initial']
+special_words = ['always', 'wire', 'reg    ','assign', 'endmodule', 'initial']
 
 class StatusBar(Frame):
     def __init__(self, parent=None):
         Frame.__init__(self, parent=None)
-        self.label = Label(self, bd=15, relief=SUNKEN, anchor=W, text="Откройте файл (.v). Нажмите TMR и выберете нужный триггер кнопкой <ВНИЗ>.")
+        self.label = Label(self, bd=15, relief=SUNKEN, anchor=W, text="Откройте файл (.v). Нажмите ПОИСК ТРИГГЕРОВ и выберете нужный триггер кнопкой <ВНИЗ>, затем СТАРТ TMR.")
         self.label.pack(fill=X)
 
     def set(self, format, *args):
@@ -63,47 +63,88 @@ class SimpleEditor(ScrolledText):
         Button(frm, text='Сохранить как',  command=self.onSave).pack(side=LEFT)
         Button(frm, text='Выход',  command=self.onQuit ).pack(side=LEFT)
         Button(frm, text='Инфо',  command=self.onAbout).pack(side=LEFT)
-        Button(frm, text='Поиск регистров',  command=self.onSearchR).pack(side=RIGHT)
-        Button(frm, text='Поиск триггеров',  command=self.onSearchT ).pack(side=RIGHT)
+        Button(frm, text='Поиск регистров',  command=self.onSearchReg).pack(side=RIGHT)
+        Button(frm, text='Поиск триггеров',  command=self.onSearchTrig ).pack(side=RIGHT)
         Button(frm, text='Старт TMR',  command=self.onTMR ).pack(side=RIGHT)
+        Button(frm, text='Удалить комментарии',  command=self.onClearComments ).pack(side=RIGHT)
         ScrolledText.__init__(self, parent, file=file)
         self.text.tag_config("a", background="yellow", foreground="blue")
         self.text.config(font=('courier', 15, 'normal'))
         self.mark_line_id = 0
         self.sum_pastit = []
+        self.line_id = 1
         self.text.bind("<Down>", self.callback)
         self.text.bind("<Up>", self.reverse_callback)
+        #self.text.bind("<ButtonPress>", self.onClick)
         self.text.pack()
     
-    def onQuit(self):
-        ans = askokcancel('Выходи', "Вы действительно хотите выйти?")
-        if ans: Frame.quit(self)
-
     def callback(self, event):
         to_mark = self.sum_pastit[self.mark_line_id]
         print "to_mark =", to_mark
         pattern = '([0-9]+\.0)\+'
-        to_mark_id = re.findall(pattern,to_mark)[0]
-        print "to_mark_id =", to_mark_id
+        self.to_mark_id = re.findall(pattern,to_mark)[0]
+        print "self.to_mark_id =", self.to_mark_id
         self.text.tag_remove("a", '1.0', END)
         self.text.mark_set(INSERT, to_mark)    
-        self.text.tag_add("a", to_mark_id, to_mark)     
+        self.text.tag_add("a", self.to_mark_id, to_mark)     
         #self.text.get('1.0', END)      
         self.text.see(INSERT)
         self.mark_line_id = self.mark_line_id + 1 % len(self.sum_pastit)
+        return self.to_mark_id
 
     def reverse_callback(self, event):
         to_mark = self.sum_pastit[self.mark_line_id]
         print "to_mark =", to_mark
         pattern = '([0-9]+\.0)\+'
-        to_mark_id = re.findall(pattern,to_mark)[0]
-        print "to_mark_id =", to_mark_id
+        self.to_mark_id = re.findall(pattern,to_mark)[0]
+        print "self.to_mark_id =", self.to_mark_id
         self.text.tag_remove("a", '1.0', END)
         self.text.mark_set(INSERT, to_mark)    
-        self.text.tag_add("a", to_mark_id, to_mark)     
+        self.text.tag_add("a", self.to_mark_id, to_mark)     
         #self.text.get('1.0', END)      
         self.text.see(INSERT)
         self.mark_line_id = self.mark_line_id - 1 % len(self.sum_pastit)
+        return self.to_mark_id
+
+    def Out(self, file):
+        self.data = file.read().split('\n')
+        tmp = "\n".join(self.data)
+        #print "self.data================================== ", self.data
+        #print "tmp= ", tmp
+        self.text.delete('1.0', END)
+        for lines in tmp:                   
+            self.text.insert(END, lines)                  
+            self.text.mark_set(INSERT, '1.0')              
+            self.text.focus()
+        return self.data
+
+    #def search_trigger(self):
+
+
+    def onSearchTrig(self):
+        self.sum_pastit = []
+        self.mark_line_id = 0
+        self.progressbar.start()
+        if type(self.data) != list:
+            self.data = self.data.split("\n")
+        print "self.line_id ===", self.line_id
+        print "self.data =", self.data
+        for n in range(self.line_id, len(self.data)):
+            pattern = 'always *\@\ *\(\ *posedge .*\)|negedge .*\)'
+            found = re.findall(pattern, self.data[n])
+            print "found =", found
+            print self.data[n]
+            for i in found:                                   
+                pastit = str(float(self.line_id) + 1.0) + ('+%dc' % len(i))
+                print "pastit =", pastit, type(pastit)
+                self.sum_pastit.append(pastit)
+            self.line_id += 1
+        print "self.sum_pastit =", self.sum_pastit
+        return self.line_id
+
+    def onQuit(self):
+        ans = askokcancel('Выход', "Вы действительно хотите выйти?")
+        if ans: Frame.quit(self)
 
     def onSave(self):
         filename = asksaveasfilename()
@@ -117,19 +158,7 @@ class SimpleEditor(ScrolledText):
             self.Out(file)
         return file
 
-    def Out(self, file):
-        self.data = file.read().split('\n')
-        tmp = "\n".join(self.data)
-        #print "self.data= ", self.data
-        #print "tmp= ", tmp
-        self.text.delete('1.0', END)
-        for lines in tmp:                   
-            self.text.insert(END, lines)                  
-            self.text.mark_set(INSERT, '1.0')              
-            self.text.focus()
-        return self.data
-
-    def onSearchR(self):
+    def onSearchReg(self):
         sum_search_peremen = []
         for lines in self.data:
             pattern = ('(reg *)([\[\d\:\d\]]*) +([\w]+) *;')
@@ -139,43 +168,59 @@ class SimpleEditor(ScrolledText):
                     search_peremen = found[0][0] + found[0][1] + " " + found[0][-1] + "_seu" + str(j) + ";"
                     sum_search_peremen.append(search_peremen)
         print "sum_search_peremen= ", sum_search_peremen
-     
-    def search_trig(self):
-        #self.mark_line_id = 0
-        line_id = 1
-        self.data = self.data.split('\n')
-        for lines in self.data:
-            pattern = 'always *\@\ *\(\ *posedge .*\)|negedge .*\)'
-            found = re.findall(pattern,lines)
-            print "found =", found
-            print lines
-            for i in found:                                   
-                pastit = str(float(line_id)) + ('+%dc' % len(i))
-                print "pastit =", pastit, type(pastit)
-                self.sum_pastit.append(pastit)
-            line_id +=1
-        print "self.sum_pastit =", self.sum_pastit
 
-    def onSearchT(self):
-        self.progressbar.start()
-        self.data = self.clear_comments()
-        self.text.delete('1.0', END)
-        for lines in self.data:  
-            self.text.insert(END, lines)                  
-            self.text.mark_set(INSERT, '1.0')              
-            # self.text.focus()
-        self.search_trig()
-                    
-    def clear_comments(self):
+    #def onClick(self, event):
+        #xy = self.text.index(CURRENT)
+        #print xy
+
+    def onClearComments(self):
         sum_found = ""
         pattern = '/{2}[^\n]*|\/*\*[\w\W]*?\*\/'
         for lines in self.data:
-            found = re.sub(pattern,"", lines)
+            found = re.sub(pattern, "", lines)
             sum_found += found + '\n'
-        return sum_found
+        self.data = sum_found
+        self.text.delete('1.0', END)
+        for lines in self.data:  
+            self.text.insert(END, lines)                  
+            self.text.mark_set(INSERT, '1.0')
+        self.data = self.data.split("\n")
+        return self.data
 
     def onTMR(self):
-        print "hui"
+        sum_found_reg = ""
+        found = []
+        #print int(float(self.to_mark_id))
+        for i in range(int(float(self.to_mark_id)), len(self.data)):
+            print "i= ", i
+            for j in range(len(special_words)):
+                if (special_words[j] in self.data[i]) or (self.data[i].startswith('reg')):
+                    content = str(float(i))
+                    content_plus = str(float(i) - 1.0) + ('+%dc' % len(self.data[i]))
+                    print "content= ", content
+                    #self.text.mark_set(INSERT, content)
+                    for n in range(1,4):
+                        print "n=", n
+                        copy = ""
+                        copy += str(self.text.get(self.to_mark_id, content) + "\n")
+                        pattern = '(\w.*)[\s].<='
+                        found = re.findall(pattern, copy)
+                        found_reg = re.sub(pattern, found[0] + "_seu" + str(n) + " <=", copy)
+                        sum_found_reg += found_reg
+                        print "found ===", found
+                        print "copy =", copy
+                        print "found_reg =", found_reg
+                    full_copy = sum_found_reg + "\n" + "always @ (*)" + "\n" + found[0] + " = (" + found[0] + "_seu1 & " + found[0] + "_seu2) | (" + found[0] + "_seu1 & " + found[0] + "_seu3) | (" + found[0] + "_seu2 & " + found[0] + "_seu3);" + "\n" + "\n"
+                    print "full_copy= ", full_copy
+                    print "content_plus= ", content_plus
+                    self.text.delete(self.to_mark_id, content)
+                    self.text.insert(INSERT, full_copy)
+                    self.data = self.gettext()
+                    print "self.datanew======================= ", self.data
+                    xy = self.text.index(INSERT)
+                    self.line_id = int(float(xy))
+                    return self.data
+                    next()
 
     def onAbout(self):
         showinfo("Vladimir Soloviev","               This is TMR editor.\nTMR is a fault- tolerant form of N-modular redundancy, in which three systems perform a process \
