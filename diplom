@@ -203,12 +203,13 @@ class SimpleEditor(ScrolledText):
                         print "n=", n
                         copy = ""
                         copy += str(self.text.get(self.to_mark_id, content) + "\n")
-                        pattern = '(\w.*)[\s].<='
+                        pattern = '(\w.*)[\s]<='
                         found = re.findall(pattern, copy)
-                        found_reg = re.sub(pattern, found[0] + "_seu" + str(n) + " <=", copy)
+                        print "found ====", found
+                        found_reg = re.sub(pattern, found[0].rstrip() + "_seu" + str(n) + " <=", copy)
                         sum_found_reg += found_reg
-                        print "found ===", found
                         print "copy =", copy
+                        #print "found ====", found
                         print "found_reg =", found_reg
                     full_copy = sum_found_reg + "\n" + "always @ (*)" + "\n" + found[0] + " = (" + found[0] + "_seu1 & " + found[0] + "_seu2) | (" + found[0] + "_seu1 & " + found[0] + "_seu3) | (" + found[0] + "_seu2 & " + found[0] + "_seu3);" + "\n" + "\n"
                     print "full_copy= ", full_copy
@@ -220,7 +221,9 @@ class SimpleEditor(ScrolledText):
                     xy = self.text.index(INSERT)
                     self.line_id = int(float(xy))
                     return self.data
+
                     next()
+
 
     def onAbout(self):
         showinfo("Vladimir Soloviev","               This is TMR editor.\nTMR is a fault- tolerant form of N-modular redundancy, in which three systems perform a process \
