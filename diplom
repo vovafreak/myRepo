@@ -15,7 +15,7 @@ import ttk
 root = Tk()
 root.title("Triple Modular Redundancy")
 root.geometry("1024x768")
-special_words = ['always', 'wire', 'reg    ','assign', 'endmodule', 'initial']
+special_words = ['always', 'wire', ' reg ','assign', 'endmodule', 'initial', 'parameter']
 
 class StatusBar(Frame):
     def __init__(self, parent=None):
@@ -82,14 +82,15 @@ class SimpleEditor(ScrolledText):
         to_mark = self.sum_pastit[self.mark_line_id]
         print "to_mark =", to_mark
         pattern = '([0-9]+\.0)\+'
-        self.to_mark_id = re.findall(pattern,to_mark)[0]
+        self.to_mark_id = re.findall(pattern, to_mark)[0]
         print "self.to_mark_id =", self.to_mark_id
+        print "self.mark_line_id =", self.mark_line_id
         self.text.tag_remove("a", '1.0', END)
         self.text.mark_set(INSERT, to_mark)    
         self.text.tag_add("a", self.to_mark_id, to_mark)     
         #self.text.get('1.0', END)      
         self.text.see(INSERT)
-        self.mark_line_id = self.mark_line_id + 1 % len(self.sum_pastit)
+        self.mark_line_id = (self.mark_line_id + 1) % len(self.sum_pastit)
         return self.to_mark_id
 
     def reverse_callback(self, event):
@@ -98,12 +99,13 @@ class SimpleEditor(ScrolledText):
         pattern = '([0-9]+\.0)\+'
         self.to_mark_id = re.findall(pattern,to_mark)[0]
         print "self.to_mark_id =", self.to_mark_id
+        print "self.mark_line_id =", self.mark_line_id
         self.text.tag_remove("a", '1.0', END)
         self.text.mark_set(INSERT, to_mark)    
         self.text.tag_add("a", self.to_mark_id, to_mark)     
         #self.text.get('1.0', END)      
         self.text.see(INSERT)
-        self.mark_line_id = self.mark_line_id - 1 % len(self.sum_pastit)
+        self.mark_line_id = (self.mark_line_id - 1) % len(self.sum_pastit)
         return self.to_mark_id
 
     def Out(self, file):
@@ -118,7 +120,15 @@ class SimpleEditor(ScrolledText):
             self.text.focus()
         return self.data
 
-    #def search_trigger(self):
+    def unique(self, found):
+        seen = set()
+        result = []
+        for x in found:
+            if x in seen:
+                continue
+            seen.add(x)
+            result.append(x)
+        return result
 
 
     def onSearchTrig(self):
@@ -127,16 +137,16 @@ class SimpleEditor(ScrolledText):
         self.progressbar.start()
         if type(self.data) != list:
             self.data = self.data.split("\n")
-        print "self.line_id ===", self.line_id
-        print "self.data =", self.data
+        #print "self.line_id ===", self.line_id
+        #print "self.data =", self.data
         for n in range(self.line_id, len(self.data)):
             pattern = 'always *\@\ *\(\ *posedge .*\)|negedge .*\)'
             found = re.findall(pattern, self.data[n])
-            print "found =", found
+            #print "found =", found
             print self.data[n]
             for i in found:                                   
                 pastit = str(float(self.line_id) + 1.0) + ('+%dc' % len(i))
-                print "pastit =", pastit, type(pastit)
+                #print "pastit =", pastit, type(pastit)
                 self.sum_pastit.append(pastit)
             self.line_id += 1
         print "self.sum_pastit =", self.sum_pastit
@@ -168,10 +178,12 @@ class SimpleEditor(ScrolledText):
                     search_peremen = found[0][0] + found[0][1] + " " + found[0][-1] + "_seu" + str(j) + ";"
                     sum_search_peremen.append(search_peremen)
         print "sum_search_peremen= ", sum_search_peremen
-
-    #def onClick(self, event):
-        #xy = self.text.index(CURRENT)
-        #print xy
+        for i in range(len(sum_search_peremen)):
+            self.text.mark_set(INSERT, '1.0')
+            self.text.insert(INSERT, sum_search_peremen[i] + "\n")
+            self.text.see(INSERT)
+            self.data = self.gettext()
+        return self.data
 
     def onClearComments(self):
         sum_found = ""
@@ -188,42 +200,70 @@ class SimpleEditor(ScrolledText):
         return self.data
 
     def onTMR(self):
+        found_hard_reg = ""
         sum_found_reg = ""
+        sum_full_copy = ""
         found = []
-        #print int(float(self.to_mark_id))
+        full_copy = ""
+        k = 0
         for i in range(int(float(self.to_mark_id)), len(self.data)):
-            print "i= ", i
+            #print "i= ", i
             for j in range(len(special_words)):
                 if (special_words[j] in self.data[i]) or (self.data[i].startswith('reg')):
                     content = str(float(i))
                     content_plus = str(float(i) - 1.0) + ('+%dc' % len(self.data[i]))
-                    print "content= ", content
-                    #self.text.mark_set(INSERT, content)
-                    for n in range(1,4):
-                        print "n=", n
-                        copy = ""
-                        copy += str(self.text.get(self.to_mark_id, content) + "\n")
-                        pattern = '(\w.*)[\s]<='
-                        found = re.findall(pattern, copy)
+                    #print "content= ", content
+                    copy = ""
+                    copy += str(self.text.get(self.to_mark_id, content) + "\n")
+                    #print "copy =", copy
+                    pattern = '(\w+)\s*\<=(?:.*)\;'
+                    pattern1 ='(\s*)<=(?!.*\).*\;)' #find standart
+                    pattern2 = '(\s*)<=(?=.*\(.*\;)(?=.*\;)' #find so skobkami
+                    pattern3 = '\{(.*)\}[\s*<=]' #find concat
+                    #pattern4 = '\{(?:\s*\w*(\s*)\,?)' 
+                    hard_reg = re.findall(pattern3, copy)
+                    if hard_reg:
+                        hard_reg = self.unique(hard_reg)
+                        hard_reg = hard_reg[0].split(", ")
+                    found = re.findall(pattern, copy)
+                    found = self.unique(found)
+                    #print "hard_reg======== ", hard_reg
+                    #print "found ====", found
+                    if "{" and "}" in copy:
+                        found = hard_reg
                         print "found ====", found
-                        found_reg = re.sub(pattern, found[0].rstrip() + "_seu" + str(n) + " <=", copy)
-                        sum_found_reg += found_reg
-                        print "copy =", copy
-                        #print "found ====", found
-                        print "found_reg =", found_reg
-                    full_copy = sum_found_reg + "\n" + "always @ (*)" + "\n" + found[0] + " = (" + found[0] + "_seu1 & " + found[0] + "_seu2) | (" + found[0] + "_seu1 & " + found[0] + "_seu3) | (" + found[0] + "_seu2 & " + found[0] + "_seu3);" + "\n" + "\n"
-                    print "full_copy= ", full_copy
-                    print "content_plus= ", content_plus
+                        for c in range(1,4):
+                            found_hard_reg = ""
+                            for x in range(len(found)):
+                                #print "found[x]=== ", found[x]
+                                found_hard_reg += found[x].rstrip() + "_seu" + str(c) + ", "
+                                #print "found_hard_reg ======", found_hard_reg
+                            new_found_hard_reg = "{" + found_hard_reg.rstrip(', ') + "}"
+                            #print "new_found_hard_reg ======", new_found_hard_reg
+                            found_reg = re.sub(pattern3, new_found_hard_reg, copy)
+                            sum_found_reg += found_reg
+                    else:
+                        for n in range(1,4):
+                            found_reg = re.sub(pattern2, "_seu" + str(n) + " <=", copy)
+                            found_reg = re.sub(pattern1, "_seu" + str(n) + " <=", copy)
+                            #print "found_reg ======", found_reg
+                            sum_found_reg += found_reg
+                        #print "sum_found_reg =", sum_found_reg
+                    while k < len(found):
+                        full_copy += "always @ (*)" + "\n" + found[k].rstrip() + " = (" + found[k].rstrip() + "_seu1 & " + found[k].rstrip() + "_seu2) | (" + found[k].rstrip() + "_seu1 & " + found[k].rstrip() + "_seu3) | (" + found[k].rstrip() + "_seu2 & " + found[k].rstrip() + "_seu3);" + "\n" + "\n"
+                        #print "full_copy= ", full_copy
+                        k += 1
+                    sum_full_copy += sum_found_reg + "\n" + full_copy + "\n"
+                    #print "sum_full_copy= ", sum_full_copy
                     self.text.delete(self.to_mark_id, content)
-                    self.text.insert(INSERT, full_copy)
+                    self.text.insert(INSERT, sum_full_copy)
                     self.data = self.gettext()
-                    print "self.datanew======================= ", self.data
+                    #print "self.datanew ======================= ", self.data
                     xy = self.text.index(INSERT)
                     self.line_id = int(float(xy))
-                    return self.data
+                    return found
 
                     next()
-
 
     def onAbout(self):
         showinfo("Vladimir Soloviev","               This is TMR editor.\nTMR is a fault- tolerant form of N-modular redundancy, in which three systems perform a process \
