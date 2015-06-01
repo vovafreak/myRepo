@@ -1,7 +1,7 @@
 # coding: utf-8
 #!/usr/bin/python
 
-from tkMessageBox import *
+from tkMessageBox import * #подключение дополнительных модулей
 from Tkinter import *
 from tkFileDialog import *
 from tkSimpleDialog import askstring
@@ -15,12 +15,12 @@ import ttk
 root = Tk()
 root.title("Triple Modular Redundancy")
 root.geometry("1024x768")
-special_words = ['always', 'wire', ' reg ','assign', 'endmodule', 'initial', 'parameter']
+special_words = ['always', 'wire', ' reg ','assign', 'endmodule', 'initial', 'parameter'] #список слов, перед которыми может заканчиваться описание триггера
 
 class StatusBar(Frame):
     def __init__(self, parent=None):
         Frame.__init__(self, parent=None)
-        self.label = Label(self, bd=15, relief=SUNKEN, anchor=W, text="Откройте файл (.v). Нажмите ПОИСК ТРИГГЕРОВ и выберете нужный триггер кнопкой <ВНИЗ>, затем СТАРТ TMR.")
+        self.label = Label(self, bd=15, relief=SUNKEN, anchor=W, text="Откройте файл (.v). Нажмите ПОИСК ТРИГГЕРОВ и выберете нужный триггер кнопкой <ВНИЗ>, затем нажмите СТАРТ TMR.")
         self.label.pack(fill=X)
 
     def set(self, format, *args):
@@ -39,7 +39,7 @@ class ScrolledText(Frame):
     def __init__(self, parent=None, text='', file=None):
         Frame.__init__(self, parent)
         self.pack(expand=YES, fill=BOTH, padx = 15, pady = 10)
-        self.progressbar = ttk.Progressbar(orient=HORIZONTAL, length=500, mode='determinate', variable=100, maximum=500)
+        self.progressbar = ttk.Progressbar(orient=HORIZONTAL, length=500, mode='determinate', variable=100, maximum=200)
         self.progressbar.pack(side="bottom")               
         self.makewidgets()
     def makewidgets(self):
@@ -52,14 +52,14 @@ class ScrolledText(Frame):
         text.pack(side=LEFT, expand=YES, fill=BOTH)
         status.pack(side=BOTTOM, fill=BOTH)
         self.text = text                  
-    def gettext(self):                               
+    def gettext(self): #получение текста с рабочей области программы                               
         return self.text.get('1.0', END+'-1c')         
 
 class SimpleEditor(ScrolledText):                        
     def __init__(self, parent=None, file=None, data = []): 
         frm = Frame(root)
         frm.pack(fill=X)
-        Button(frm, text='Открыть', command=self.onOpen).pack(side=LEFT)
+        Button(frm, text='Открыть', command=self.onOpen).pack(side=LEFT) #создание кнопок на рабочей области программы
         Button(frm, text='Сохранить как',  command=self.onSave).pack(side=LEFT)
         Button(frm, text='Выход',  command=self.onQuit ).pack(side=LEFT)
         Button(frm, text='Инфо',  command=self.onAbout).pack(side=LEFT)
@@ -68,17 +68,16 @@ class SimpleEditor(ScrolledText):
         Button(frm, text='Старт TMR',  command=self.onTMR ).pack(side=RIGHT)
         Button(frm, text='Удалить комментарии',  command=self.onClearComments ).pack(side=RIGHT)
         ScrolledText.__init__(self, parent, file=file)
-        self.text.tag_config("a", background="yellow", foreground="blue")
+        self.text.tag_config("a", background="blue", foreground="white")
         self.text.config(font=('courier', 15, 'normal'))
-        self.mark_line_id = 0
-        self.sum_pastit = []
-        self.line_id = 1
-        self.text.bind("<Down>", self.callback)
-        self.text.bind("<Up>", self.reverse_callback)
-        #self.text.bind("<ButtonPress>", self.onClick)
+        self.mark_line_id = 0 #номер строки
+        self.sum_pastit = [] #индексы нахождения описаний триггеров
+        self.line_id = 1 #отсчет строк начинается с 1.0
+        self.text.bind("<Down>", self.callback) #вызов следующего триггера
+        self.text.bind("<Up>", self.reverse_callback) # и предыдущего
         self.text.pack()
     
-    def callback(self, event):
+    def callback(self, event): #функция вызова следующего триггера
         to_mark = self.sum_pastit[self.mark_line_id]
         print "to_mark =", to_mark
         pattern = '([0-9]+\.0)\+'
@@ -93,7 +92,7 @@ class SimpleEditor(ScrolledText):
         self.mark_line_id = (self.mark_line_id + 1) % len(self.sum_pastit)
         return self.to_mark_id
 
-    def reverse_callback(self, event):
+    def reverse_callback(self, event): #функция вызова предыдущего триггера
         to_mark = self.sum_pastit[self.mark_line_id]
         print "to_mark =", to_mark
         pattern = '([0-9]+\.0)\+'
@@ -108,11 +107,9 @@ class SimpleEditor(ScrolledText):
         self.mark_line_id = (self.mark_line_id - 1) % len(self.sum_pastit)
         return self.to_mark_id
 
-    def Out(self, file):
+    def Out(self, file): #функция вывода текста на рабочую область программы
         self.data = file.read().split('\n')
         tmp = "\n".join(self.data)
-        #print "self.data================================== ", self.data
-        #print "tmp= ", tmp
         self.text.delete('1.0', END)
         for lines in tmp:                   
             self.text.insert(END, lines)                  
@@ -120,7 +117,7 @@ class SimpleEditor(ScrolledText):
             self.text.focus()
         return self.data
 
-    def unique(self, found):
+    def unique(self, found): #преобразование переменных к нужному виду
         seen = set()
         result = []
         for x in found:
@@ -130,8 +127,9 @@ class SimpleEditor(ScrolledText):
             result.append(x)
         return result
 
+#:::::::::::::::::::::::::: Функции, назначенные на кнопки :::::::::::::::::::::::::::::
 
-    def onSearchTrig(self):
+    def onSearchTrig(self): #функция для нахождения полного описания триггера и его индексов
         self.sum_pastit = []
         self.mark_line_id = 0
         self.progressbar.start()
@@ -152,26 +150,26 @@ class SimpleEditor(ScrolledText):
         print "self.sum_pastit =", self.sum_pastit
         return self.line_id
 
-    def onQuit(self):
+    def onQuit(self): #функция для осуществления выхода из программы
         ans = askokcancel('Выход', "Вы действительно хотите выйти?")
         if ans: Frame.quit(self)
 
-    def onSave(self):
+    def onSave(self): #функция сохранения преобразованного файла
         filename = asksaveasfilename()
         if filename:
             alltext = self.gettext()                      
             open(filename, 'w').write(alltext)
 
-    def onOpen(self):                                    
+    def onOpen(self): #функция открытия файла                                    
         file = askopenfile(mode='r',title='Choose file')
         if file != None:
             self.Out(file)
         return file
 
-    def onSearchReg(self):
+    def onSearchReg(self): #функция поиска всех регистров в файле
         sum_search_peremen = []
         for lines in self.data:
-            pattern = ('(reg *)([\[\d\:\d\]]*) +([\w]+) *;')
+            pattern = ('(reg *)([\[\d\:\d\]]*) +([\w]+) *;') #паттерн для нахождения регистров в файле
             found = re.findall(pattern,lines)
             if found:
                 for j in range(1,4):
@@ -185,7 +183,7 @@ class SimpleEditor(ScrolledText):
             self.data = self.gettext()
         return self.data
 
-    def onClearComments(self):
+    def onClearComments(self): #функция очистки файла от комментариев
         sum_found = ""
         pattern = '/{2}[^\n]*|\/*\*[\w\W]*?\*\/'
         for lines in self.data:
@@ -199,79 +197,68 @@ class SimpleEditor(ScrolledText):
         self.data = self.data.split("\n")
         return self.data
 
-    def onTMR(self):
+    def onTMR(self): #основная функция, в которой используется метод тройного резервирования
         found_hard_reg = ""
         sum_found_reg = ""
         sum_full_copy = ""
-        found = []
         full_copy = ""
+        found = []
         k = 0
         for i in range(int(float(self.to_mark_id)), len(self.data)):
-            #print "i= ", i
             for j in range(len(special_words)):
-                if (special_words[j] in self.data[i]) or (self.data[i].startswith('reg')):
+                if (special_words[j] in self.data[i]) or (self.data[i].startswith('reg')): #нахождение конца описания триггера
                     content = str(float(i))
                     content_plus = str(float(i) - 1.0) + ('+%dc' % len(self.data[i]))
                     #print "content= ", content
                     copy = ""
-                    copy += str(self.text.get(self.to_mark_id, content) + "\n")
+                    copy += str(self.text.get(self.to_mark_id, content) + "\n") #полное описание триггера
                     #print "copy =", copy
-                    pattern = '(\w+)\s*\<=(?:.*)\;'
-                    pattern1 ='(\s*)<=(?!.*\).*\;)' #find standart
-                    pattern2 = '(\s*)<=(?=.*\(.*\;)(?=.*\;)' #find so skobkami
-                    pattern3 = '\{(.*)\}[\s*<=]' #find concat
-                    #pattern4 = '\{(?:\s*\w*(\s*)\,?)' 
+                    pattern = '(\w+)\s*\<=(?:.*)\;' #паттерн для получения списка(found[]) c регистрами
+                    pattern1 ='(\s*)<=(?!.*\).*\;)' #паттерн для нахождения простых регистров внутри триггера
+                    pattern2 = '(\s*)<=(?=.*\(.*\;)(?=.*\;)' #паттерн для нахождения регистров со скобками внутри триггера
+                    pattern3 = '\{(.*)\}[\s*<=]' #паттерн для нахождения регистров в фигурных скобках внутри триггера 
                     hard_reg = re.findall(pattern3, copy)
                     if hard_reg:
                         hard_reg = self.unique(hard_reg)
                         hard_reg = hard_reg[0].split(", ")
                     found = re.findall(pattern, copy)
-                    found = self.unique(found)
-                    #print "hard_reg======== ", hard_reg
-                    #print "found ====", found
-                    if "{" and "}" in copy:
+                    found = self.unique(found) #изменение условия для обработки различных случаев
+                    if "{" and "}" in copy: #условие для поиска конкантенации регистров
                         found = hard_reg
                         print "found ====", found
                         for c in range(1,4):
                             found_hard_reg = ""
                             for x in range(len(found)):
-                                #print "found[x]=== ", found[x]
                                 found_hard_reg += found[x].rstrip() + "_seu" + str(c) + ", "
-                                #print "found_hard_reg ======", found_hard_reg
                             new_found_hard_reg = "{" + found_hard_reg.rstrip(', ') + "}"
-                            #print "new_found_hard_reg ======", new_found_hard_reg
                             found_reg = re.sub(pattern3, new_found_hard_reg, copy)
                             sum_found_reg += found_reg
-                    else:
+                    else: #продолжение
                         for n in range(1,4):
-                            found_reg = re.sub(pattern2, "_seu" + str(n) + " <=", copy)
-                            found_reg = re.sub(pattern1, "_seu" + str(n) + " <=", copy)
-                            #print "found_reg ======", found_reg
+                            found_reg1 = re.sub(pattern2, "_seu" + str(n) + " <=", copy)
+                            found_reg = re.sub(pattern1, "_seu" + str(n) + " <=", found_reg1)
                             sum_found_reg += found_reg
-                        #print "sum_found_reg =", sum_found_reg
-                    while k < len(found):
+                    while k < len(found): #добавление мажоритарной логики
                         full_copy += "always @ (*)" + "\n" + found[k].rstrip() + " = (" + found[k].rstrip() + "_seu1 & " + found[k].rstrip() + "_seu2) | (" + found[k].rstrip() + "_seu1 & " + found[k].rstrip() + "_seu3) | (" + found[k].rstrip() + "_seu2 & " + found[k].rstrip() + "_seu3);" + "\n" + "\n"
-                        #print "full_copy= ", full_copy
                         k += 1
                     sum_full_copy += sum_found_reg + "\n" + full_copy + "\n"
-                    #print "sum_full_copy= ", sum_full_copy
-                    self.text.delete(self.to_mark_id, content)
-                    self.text.insert(INSERT, sum_full_copy)
-                    self.data = self.gettext()
-                    #print "self.datanew ======================= ", self.data
+                    self.text.delete(self.to_mark_id, content) #очистка рабочей области программы от текста
+                    self.text.insert(INSERT, sum_full_copy) #вставка текста на рабочую область программы
+                    self.data = self.gettext() #сохранение текста из рабочей области программы в переменную self.data
                     xy = self.text.index(INSERT)
-                    self.line_id = int(float(xy))
+                    self.line_id = int(float(xy)) #индекс последнего положения курсора
+                    self.text.tag_add("a", self.to_mark_id, xy) #выделение изменений на экране
                     return found
 
                     next()
 
-    def onAbout(self):
+    def onAbout(self): #открытие окна с информацией о программе
         showinfo("Vladimir Soloviev","               This is TMR editor.\nTMR is a fault- tolerant form of N-modular redundancy, in which three systems perform a process \
 and that result is processed by a majority-voting system to produce a single output.\
 If any one of the three systems fails, the other two systems can correct and mask the fault.\
                                     \n(test version) \n MIET \n 2015")                       
 
-if __name__ == '__main__':
+if __name__ == '__main__': #обработка исключений
     try:
         SimpleEditor(file=sys.argv[1]).mainloop()   
     except IndexError:
